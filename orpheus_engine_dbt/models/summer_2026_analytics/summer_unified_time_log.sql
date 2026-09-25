@@ -1621,19 +1621,13 @@ half_life_custom_hourly AS (
     GROUP BY 1, 2, 3, 4, 5
 ),
 
-<<<<<<< HEAD
 crescent_ht_claims AS (
     SELECT 'crescent'::text AS program_name,
-=======
-snowglobe_ht_claims AS (
-    SELECT 'snowglobe'::text AS program_name,
->>>>>>> 8061ebb (Add snowglobe airtable sync via dashbored)
         CASE WHEN POSITION('@' IN LOWER(BTRIM(u."email"))) > 0
              THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."email")), '@', 1), '+', 1)
                   || '@' || SPLIT_PART(LOWER(BTRIM(u."email")), '@', 2)
              ELSE SPLIT_PART(LOWER(BTRIM(u."email")), '+', 1)
         END AS user_email,
-<<<<<<< HEAD
         LOWER(BTRIM(hp."hackatime_project_name")) AS hackatime_alias,
         NULL::text AS project_name,
         NULL::text AS code_url,
@@ -1641,15 +1635,22 @@ snowglobe_ht_claims AS (
     FROM {{ source('crescent', 'project_hackatime_links') }} hp
     JOIN {{ source('crescent', 'users') }} u ON u."id" = hp."user_id"
     WHERE hp."hackatime_project_name" IS NOT NULL AND hp."hackatime_project_name" <> ''
-=======
+),
+
+snowglobe_ht_claims AS (
+    SELECT 'snowglobe'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(u."email"))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."email")), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(u."email")), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(u."email")), '+', 1)
+        END AS user_email,
         LOWER(BTRIM(hp."hackatime_proj_name")) AS hackatime_alias,
         NULL::text AS project_name,
         NULL::text AS code_url,
         hp."loops_snowglobe_project_creation_time" AT TIME ZONE 'UTC' AS claim_start_ts
     FROM {{ source('airtable_snowglobe', 'projects') }} hp
-    JOIN {{ source('airtable_snowglobe', 'users') }} u ON u."id" = hp."slack_id"
+    JOIN {{ source('airtable_snowglobe', 'users') }} u ON u."slack_id" = hp."slack_id"
     WHERE hp."hackatime_proj_name" IS NOT NULL AND hp."hackatime_proj_name" <> ''
->>>>>>> 8061ebb (Add snowglobe airtable sync via dashbored)
 ),
 
 all_claims_raw AS (
@@ -1672,11 +1673,8 @@ all_claims_raw AS (
     UNION ALL SELECT * FROM high_seas_ht_claims
     UNION ALL SELECT * FROM phantom_ht_claims
     UNION ALL SELECT * FROM half_life_ht_claims
-<<<<<<< HEAD
     UNION ALL SELECT * FROM crescent_ht_claims
-=======
     UNION ALL SELECT * FROM snowglobe_ht_claims
->>>>>>> 8061ebb (Add snowglobe airtable sync via dashbored)
 ),
 
 all_claims AS (
