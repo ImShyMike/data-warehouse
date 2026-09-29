@@ -248,7 +248,10 @@ WITH program_windows AS (
         ('crescent', TIMESTAMP WITH TIME ZONE '2026-09-22 00:00:00+00',
                    NULL::timestamptz),
         ('snowglobe', TIMESTAMP WITH TIME ZONE '2026-08-30 00:00:00+00',
+                   NULL::timestamptz),
+        ('club_shop', TIMESTAMP WITH TIME ZONE '2026-08-01 00:00:00+00',
                    NULL::timestamptz)
+    
     ) AS t(program_name, start_at, end_at_exclusive)
 ),
 
@@ -1741,6 +1744,42 @@ hackatime_matches AS (
 -- DAU is unaffected by the cap. The cap applies per logging path: a user-day
 -- can still exceed 24h when a program counts hackatime AND custom time
 -- (different sources, deliberately not netted against each other).
+club_shop_custom_hourly_uncapped AS (
+    SELECT
+        DATE_TRUNC('hour', a."day" AT TIME ZONE 'UTC') AS activity_hour,
+        'club_shop'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(u."primary_email"))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."primary_email")), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(u."primary_email")), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(u."primary_email")), '+', 1)
+        END AS user_email,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        ROUND(SUM(LEAST(a."day", 24))::numeric, 4) AS raw_hours_logged,
+        'custom'::text AS logging_method,
+        ('club_shop.user_activity_days.day; entries=' || COUNT(*)::text) AS source_detail
+    FROM {{ source('club_shop', 'user_activity_days') }} a
+    JOIN {{ source('club_shop', 'users') }} u ON u."id" = a."user_id"
+    WHERE a."day" > 0
+    GROUP BY 1, 2, 3, 4, 5
+),
+
+club_shop_custom_hourly AS (
+    SELECT
+        activity_hour,
+        program_name,
+        user_email,
+        project_name,
+        code_url,
+        ROUND((raw_hours_logged * LEAST(1.0, 24.0 / NULLIF(
+            SUM(raw_hours_logged) OVER (
+                PARTITION BY user_email, activity_hour::date
+            ), 0)))::numeric, 4) AS raw_hours_logged,
+        logging_method,
+        source_detail
+    FROM club_shop_custom_hourly_uncapped
+),
+
 custom_in_window AS (
     SELECT
         activity_hour,
@@ -1774,6 +1813,7 @@ custom_in_window AS (
             UNION ALL SELECT * FROM arcade_custom_hourly
             UNION ALL SELECT * FROM juice_custom_hourly
             UNION ALL SELECT * FROM half_life_custom_hourly
+            UNION ALL SELECT * FROM club_shop_custom_hourly
         ) c
         JOIN program_windows w
             ON w.program_name = c.program_name
