@@ -280,19 +280,17 @@ class CodeGenerator:
         sensitive = self._for_key(self.state.get("sensitive_columns") or {}, key) or []
         config = self._for_key(self.state.get("sync_configs") or {}, key) or {}
 
-        all_cols = [c["name"] for c in self._columns(key)]
-        safe_cols = [c for c in all_cols if c not in sensitive]
         source_table = self._source_table(key)
         warehouse_table = self._table_name(key)
         stream = py_str(f"{self._table_schema(key)}.{source_table}")
 
-        has_select = len(safe_cols) < len(all_cols)
+        has_excludes = len(sensitive) > 0
         is_incremental = config.get("mode") == "incremental"
         renamed = warehouse_table != source_table
         pk = config.get("primary_key") if is_incremental else None
         uk = config.get("update_key") if is_incremental else None
 
-        if not has_select and not is_incremental and not renamed:
+        if not has_excludes and not is_incremental and not renamed:
             return [f'        {stream}: None,']
 
         indent = " " * 12
@@ -308,11 +306,12 @@ class CodeGenerator:
             lines.append(f'{indent}"primary_key": {py_list(pk)},')
         if uk:
             lines.append(f'{indent}"update_key": {py_str(uk)},')
-        if has_select:
+        if has_excludes:
+            excluded = [f"-{col}" for col in sensitive]
             lines.append(f'{indent}"select": [')
             chunk = []
             line_len = 0
-            for col in safe_cols:
+            for col in excluded:
                 item = py_str(col)
                 if line_len + len(item) > 60 and chunk:
                     lines.append(f'{indent}    {", ".join(chunk)},')

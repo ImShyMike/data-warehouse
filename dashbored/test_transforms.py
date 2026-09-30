@@ -346,9 +346,9 @@ def test_replication_config_excludes_sensitive_columns(generated):
     config = generated["replication_config"]
     assert '"source": "TEST_PROGRAM_DB"' in config
     assert '"target": "WAREHOUSE_DB"' in config
-    assert '"email"' in config
-    assert "password_digest" not in config
-    assert "reset_token" not in config
+    assert '"-password_digest"' in config
+    assert '"-reset_token"' in config
+    assert '"email"' not in config
     assert '"mode": "incremental"' in config
     assert '"update_key": "updated_at"' in config
 
@@ -704,7 +704,7 @@ def test_postgres_hostile_identifiers(assets_source, sources_source):
     config = assigned_value(generated["replication_config"], "hostile_replication_config")
     streams = ast.literal_eval(dict_entry(config, "streams"))
     assert streams["public.logs"]["update_key"] == quoted
-    assert streams["public.logs"]["select"] == ["id", "user_email", quoted]
+    assert streams["public.logs"]["select"] == ['-secret"token']
 
     entry = yaml.safe_load("sources:\n" + generated["sources_yml"])["sources"][0]
     assert [t["name"] for t in entry["tables"]] == ["on", "logs"]
