@@ -1235,15 +1235,10 @@ hack_club_the_game_replication_config = {
         # Users: exclude encrypted auth tokens
         "public.users": {
             "select": [
-                "id", "account_id", "avatar", "ban_type", "birthday",
-                "email", "hackatime_id", "internal_notes", "is_banned",
-                "last_active", "referrer_id", "slack_id", "username",
-                "ysws_verified", "deleted_at", "created_at",
-                "updated_at", "referral_code", "verification_status",
-                "address_street", "address_locality", "address_region",
-                "address_postal", "address_country", "first_name", "last_name",
-                # `role` was dropped upstream and replaced by boolean flags
-                "is_admin", "is_reviewer", "is_fulfiller",
+                "-account_access_token", "-hackatime_access_token",
+                "-onboarding_completed", "-can_overspend",
+                "-referral_share_code", "-phone_number", "-is_debt",
+                "-is_shop_approved",
             ],
         },
     },
@@ -1383,49 +1378,36 @@ stardance_replication_config = {
         },
         "public.user_identities": {
             "select": [
-                "id", "created_at", "provider", "uid", "updated_at", "user_id",
-            ],  # Excludes access_token_*/refresh_token_* (ciphertext + bidx)
+                "-access_token_bidx", "-access_token_ciphertext",
+                "-refresh_token_bidx", "-refresh_token_ciphertext",
+            ],
         },
         "public.rsvps": {
             "select": [
-                "id", "click_confirmed_at", "created_at", "email", "ip_address",
-                "ref", "reply_confirmed_at", "signup_confirmation_sent_at",
-                "synced_at", "updated_at", "user_agent", "geocoded_lat",
-                "geocoded_lon", "geocoded_country", "geocoded_subdivision",
-                "user_ref",
-            ],  # Excludes confirmation_token
+                "-confirmation_token",
+            ],
         },
         "public.shop_orders": {
             "select": [
-                "id", "aasm_state", "assigned_to_user_id",
-                "awaiting_periodical_fulfillment_at", "created_at",
-                "external_ref", "fraud_related_project_id", "frozen_item_price",
-                "fulfilled_at", "fulfilled_by", "fulfillment_cost",
-                "fulfillment_payout_line_id", "internal_notes",
-                "internal_rejection_reason", "joe_case_url", "on_hold_at",
-                "parent_order_id", "quantity", "region", "rejected_at",
-                "rejection_reason", "shop_card_grant_id", "shop_item_id",
-                "tracking_number", "updated_at", "user_id",
-                "warehouse_package_id", "frozen_modifiers_price",
-            ],  # Excludes frozen_address_ciphertext
+                "-frozen_address_ciphertext", "-fraud_payout_line_id",
+                "-fraud_review_payout_id", "-country",
+            ],
         },
         "public.shop_warehouse_packages": {
             "select": [
-                "id", "created_at", "frozen_contents", "theseus_package_id",
-                "updated_at", "user_id",
-            ],  # Excludes frozen_address_ciphertext
+                "-frozen_address_ciphertext",
+            ],
         },
         "public.hcb_credentials": {
             "select": [
-                "id", "base_url", "client_id", "created_at", "redirect_uri",
-                "slug", "updated_at",
-            ],  # Excludes access_token/client_secret/refresh_token ciphertext
+                "-access_token_ciphertext", "-client_secret_ciphertext",
+                "-refresh_token_ciphertext", "-expires_at",
+            ],
         },
         "public.report_review_tokens": {
             "select": [
-                "id", "action", "created_at", "expires_at", "report_id",
-                "updated_at", "used_at",
-            ],  # Excludes token
+                "-token",
+            ],
         },
     }
 }
@@ -1845,8 +1827,7 @@ stasis_replication_config = {
             "primary_key": ["id"],
             "update_key": "updatedAt",
             "select": [
-                "id", "expiresAt", "createdAt", "updatedAt",
-                "ipAddress", "userAgent", "userId",
+                "-token",
             ],  # Excludes token
         },
         "public.shop_item": {
@@ -1859,9 +1840,7 @@ stasis_replication_config = {
             "primary_key": ["id"],
             "update_key": "updatedAt",
             "select": [
-                "id", "email", "utmSource", "referredBy", "firstName",
-                "lastName", "finishedAccount", "syncedToAirtable",
-                "createdAt", "updatedAt",
+                "-ip",
             ],  # Excludes ip
         },
         "public.user": {
@@ -1983,12 +1962,15 @@ horizons_replication_config = {
             "primary_key": ["project_id"],
             "update_key": "updated_at",
             "select": [
-                "project_id", "user_id", "project_title", "project_type",
-                "now_hackatime_hours", "approved_hours",
-                "now_hackatime_projects", "repo_url", "created_at",
-                "updated_at", "joe_project_id", "joe_fraud_passed",
-                "joe_fraud_reviewed_at", "joe_outcome_status",
-                "joe_outcome_recorded_at", "deleted_at", "perm_reject",
+                "-id", "-name", "-description", "-playable_url", "-code_url",
+                "-image_url", "-hackatime_names", "-status", "-shipped",
+                "-total_hours", "-shipped_at", "-reviewed",
+                "-past_approved_hours", "-coins_earned", "-admin_feedback",
+                "-hour_justification", "-reviewed_at",
+                "-reviewed_by_user_id", "-fraud_flag", "-baseline_hours",
+                "-hackatime_hours", "-airtable_record_id", "-bricks_earned",
+                "-ysws_record_id", "-parent_project_id", "-ship_kind",
+                "-blocked", "-last_shipped_hours", "-reship_update",
             ],
         },
         "public.shop_item_variants": {
@@ -2532,9 +2514,8 @@ construct_replication_config = {
             "primary_key": ["id"],
             "update_key": "updatedAt",
             "select": [
-                "id", "userId", "name", "description", "url", "status",
-                "deleted", "createdAt", "updatedAt", "submittedToAirtable",
-                "doubleDippingWith",
+                "-printedBy", "-editorFileType", "-editorUrl",
+                "-uploadedFileUrl", "-modelFile",
             ],
         },
         "public.ship": {
@@ -2542,7 +2523,8 @@ construct_replication_config = {
             "primary_key": ["id"],
             "update_key": "timestamp",
             "select": [
-                "id", "userId", "projectId", "url", "timestamp", "clubId",
+                "-editorFileType", "-editorUrl", "-uploadedFileUrl",
+                "-modelFile",
             ],
         },
         "public.user": {
@@ -2550,11 +2532,7 @@ construct_replication_config = {
             "primary_key": ["id"],
             "update_key": "lastLoginAt",
             "select": [
-                "id", "slackId", "name", "hackatimeTrust", "trust",
-                "clay", "brick", "shopScore", "hasBasePrinter",
-                "hasT1Review", "hasT2Review", "hasAdmin", "createdAt",
-                "lastLoginAt", "isPrinter", "referralId", "stickersShipped",
-                "printerFulfilment",
+                "-idvId", "-profilePicture", "-idvToken", "-printer",
             ],
         },
         "public.legion_review": {
@@ -2562,22 +2540,23 @@ construct_replication_config = {
             "primary_key": ["id"],
             "update_key": "timestamp",
             "select": [
-                "id", "userId", "projectId", "filamentUsed", "action", "timestamp",
+                "-feedback", "-notes",
             ],
         },
         "public.t1_review": {
             "mode": "incremental",
             "primary_key": ["id"],
             "update_key": "timestamp",
-            "select": ["id", "userId", "projectId", "action", "timestamp"],
+            "select": [
+                "-feedback", "-notes",
+            ],
         },
         "public.t2_review": {
             "mode": "incremental",
             "primary_key": ["id"],
             "update_key": "timestamp",
             "select": [
-                "id", "userId", "projectId", "shopScoreMultiplier",
-                "shopScore", "timestamp",
+                "-feedback", "-notes", "-image",
             ],
         },
         "public.schema_migrations": {"disabled": True},
@@ -4064,25 +4043,41 @@ half_life_replication_config = {
         },
         "public.post": {
             "select": [
-                "id", "userId", "themeProjectId", "status", "publishedAt",
-                "createdAt", "updatedAt", "deletedAt", "kind",
+                "-caption", "-objectKey", "-thumbnailKey", "-contentType",
+                "-byteSize", "-durationSeconds", "-width", "-height",
+                "-viewCount", "-hiddenAt", "-hiddenById", "-hiddenReason",
+                "-weekNumber", "-commentCount", "-likeCount", "-pinnedAt",
+                "-checkpointKey",
             ],
         },
         "public.program_settings": {
             "select": [
-                "id", "eventStartDate", "programTimezone", "updatedAt",
+                "-submissionsOpen", "-submissionsCloseAt", "-shopOpen",
+                "-shopClosesAt", "-shopGraceDays", "-reviewClaimTtlMinutes",
+                "-airtableSyncEnabled", "-updatedById", "-repoSyncEnabled",
             ],
         },
         "public.session_timelapse": {
             "select": [
-                "id", "workSessionId", "provider", "coveredSeconds",
-                "createdAt",
+                "-objectKey", "-playbackUrl", "-thumbnailUrl",
+                "-runtimeSeconds", "-speedupFactor", "-externalId",
             ],
         },
         "public.theme_project": {
             "select": [
-                "id", "userId", "title", "githubRepo", "createdAt",
-                "updatedAt", "deletedAt",
+                "-theme", "-description", "-coverImageKey", "-artifactLinks",
+                "-designStatus", "-designReviewComments",
+                "-designReviewedAt", "-designReviewedById", "-buildStatus",
+                "-buildReviewComments", "-buildReviewedAt",
+                "-buildReviewedById", "-tier", "-grantUsd",
+                "-grantEmittedAt", "-approvedHours", "-approvedHoursAt",
+                "-submissionExtensionUntil", "-deletedById",
+                "-bomSavingsUsd", "-buildCoins", "-designApprovedHours",
+                "-designApprovedHoursAt", "-designBankedCoins",
+                "-designSpendableCoins", "-requestedTier",
+                "-starterProjectId", "-bomTaxShippingUsd", "-namedAt",
+                "-warmupPhase", "-repoSyncEnabled", "-repoSyncRepo",
+                "-repoSyncedAt", "-repoSyncError", "-repoSyncQueuedAt",
             ],
         },
         "public.user": {
@@ -4093,8 +4088,9 @@ half_life_replication_config = {
         },
         "public.work_session": {
             "select": [
-                "id", "themeProjectId", "hoursClaimed", "hoursSource",
-                "effectiveDate", "createdAt", "updatedAt", "deletedAt",
+                "-phase", "-title", "-content", "-hoursApproved",
+                "-weekNumber", "-reviewComments", "-reviewedAt",
+                "-reviewedById",
             ],
         },
     },
