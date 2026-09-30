@@ -171,9 +171,24 @@ HACKATIME_DAU_DBT_ASSETS: tuple[dg.AssetKey, ...] = (
     dg.AssetKey(["summer_2026_analytics", "dashboard_data_health"]),
 )
 
+# Auto-include upstream source mirrors (sling + airtable DLT) that the DAU dbt
+# models depend on, via deps: metadata in sources.yml. This prevents the "new
+# program added but its mirror hasn't run yet" failure that killed DAU for 9
+# days when crescent was added. Dashbored wires these deps automatically, so new
+# programs are picked up with no manual selection changes.
+#
+# Subtract FREQUENT_SELECTION to avoid running the same asset in two concurrent
+# jobs. Exclude airtable_raw_all_bases (the multi-hour all-bases sync used by
+# shiba, a historical program whose data never changes).
+_dau_upstream_mirrors = (
+    dg.AssetSelection.assets(*HACKATIME_DAU_DBT_ASSETS).upstream()
+    - FREQUENT_SELECTION
+    - dg.AssetSelection.assets("airtable_raw_all_bases_sync")
+)
+
 HACKATIME_DAU_SELECTION = (
-    dg.AssetSelection.assets("hackatime_warehouse_mirror") |
-    dg.AssetSelection.assets(*HACKATIME_DAU_DBT_ASSETS)
+    dg.AssetSelection.assets(*HACKATIME_DAU_DBT_ASSETS) |
+    _dau_upstream_mirrors
 )
 
 # Project search (YSWS mention search + upstream processing deps)
