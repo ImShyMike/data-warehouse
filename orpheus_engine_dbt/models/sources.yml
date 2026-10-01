@@ -989,9 +989,6 @@ sources:
       - name: leaders
         description: "Club Shop leaders table."
         meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
-      - name: login_codes
-        description: "Club Shop login_codes table."
-        meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
       - name: members
         description: "Club Shop members table."
         meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
@@ -1012,9 +1009,6 @@ sources:
         meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
       - name: role_invites
         description: "Club Shop role_invites table."
-        meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
-      - name: sessions
-        description: "Club Shop sessions table."
         meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
       - name: ship_drafts
         description: "Club Shop ship_drafts table."
