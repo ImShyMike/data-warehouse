@@ -1744,9 +1744,9 @@ hackatime_matches AS (
 -- DAU is unaffected by the cap. The cap applies per logging path: a user-day
 -- can still exceed 24h when a program counts hackatime AND custom time
 -- (different sources, deliberately not netted against each other).
-club_shop_custom_hourly_uncapped AS (
+club_shop_activity AS (
     SELECT
-        DATE_TRUNC('hour', a."day" AT TIME ZONE 'UTC') AS activity_hour,
+        a."day"::timestamp AS activity_hour,
         'club_shop'::text AS program_name,
         CASE WHEN POSITION('@' IN LOWER(BTRIM(u."primary_email"))) > 0
              THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."primary_email")), '@', 1), '+', 1)
@@ -1755,29 +1755,19 @@ club_shop_custom_hourly_uncapped AS (
         END AS user_email,
         NULL::text AS project_name,
         NULL::text AS code_url,
-        ROUND(SUM(LEAST(a."day", 24))::numeric, 4) AS raw_hours_logged,
-        'custom'::text AS logging_method,
-        ('club_shop.user_activity_days.day; entries=' || COUNT(*)::text) AS source_detail
+        'daily_user_activity'::text AS logging_method,
+        0::numeric AS raw_hours_logged,
+        0::numeric AS credited_hours_logged,
+        1::smallint AS split_factor,
+        'none'::text AS overlap_type,
+        NULL::text[] AS overlapping_programs,
+        NULL::text AS hackatime_alias,
+        'club_shop.user_activity_days (no durations; DAU only)'::text AS source_detail,
+        NULL::timestamptz AS claim_started_at
     FROM {{ source('club_shop', 'user_activity_days') }} a
     JOIN {{ source('club_shop', 'users') }} u ON u."id" = a."user_id"
-    WHERE a."day" > 0
+    WHERE u."primary_email" IS NOT NULL
     GROUP BY 1, 2, 3, 4, 5
-),
-
-club_shop_custom_hourly AS (
-    SELECT
-        activity_hour,
-        program_name,
-        user_email,
-        project_name,
-        code_url,
-        ROUND((raw_hours_logged * LEAST(1.0, 24.0 / NULLIF(
-            SUM(raw_hours_logged) OVER (
-                PARTITION BY user_email, activity_hour::date
-            ), 0)))::numeric, 4) AS raw_hours_logged,
-        logging_method,
-        source_detail
-    FROM club_shop_custom_hourly_uncapped
 ),
 
 custom_in_window AS (
@@ -1813,7 +1803,6 @@ custom_in_window AS (
             UNION ALL SELECT * FROM arcade_custom_hourly
             UNION ALL SELECT * FROM juice_custom_hourly
             UNION ALL SELECT * FROM half_life_custom_hourly
-            UNION ALL SELECT * FROM club_shop_custom_hourly
         ) c
         JOIN program_windows w
             ON w.program_name = c.program_name
@@ -2179,6 +2168,8 @@ combined AS (
     SELECT * FROM fallout_activity_log
     UNION ALL
     SELECT * FROM highway_activity
+    UNION ALL
+    SELECT * FROM club_shop_activity
 ),
 
 -- The rows that actually land in the table: every time-bearing row plus the
@@ -2194,7 +2185,7 @@ final_rows AS (
         (activity_hour AT TIME ZONE 'America/New_York')::date AS activity_date
     FROM combined
     WHERE credited_hours_logged > 0
-       OR logging_method IN ('github_commit_days', 'hardware_build')
+       OR logging_method IN ('github_commit_days', 'hardware_build', 'daily_user_activity')
 ),
 
 -- ============================================================

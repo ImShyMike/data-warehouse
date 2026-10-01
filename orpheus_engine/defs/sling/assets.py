@@ -4260,7 +4260,6 @@ club_shop_replication_config = {
     },
 
     "streams": {
-        "public.__clubs_migrations": None,
         "public.airtable_sync_state": None,
         "public.ambassadors": None,
         "public.app_settings": None,

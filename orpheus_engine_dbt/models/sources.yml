@@ -923,9 +923,6 @@ sources:
   - name: club_shop
     schema: club_shop
     tables:
-      - name: __clubs_migrations
-        description: "Club Shop __clubs_migrations table."
-        meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
       - name: airtable_sync_state
         description: "Club Shop airtable_sync_state table."
         meta: {dagster: {deps: [club_shop_warehouse_mirror]}}
