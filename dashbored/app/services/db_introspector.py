@@ -15,7 +15,7 @@ EXCLUDED_TABLES = [
     "pg_stat_statements_info",
 ]
 
-EXCLUDED_PREFIXES = ["solid_queue_", "solid_cache_", "good_job_"]
+EXCLUDED_PREFIXES = ["solid_queue_", "solid_cache_", "solid_cable_", "good_job_"]
 
 CONNECT_TIMEOUT = 5
 STATEMENT_TIMEOUT = "30s"
