@@ -38,7 +38,8 @@ WITH source_info AS (
         ('moonshot', 'program db', DATE '2025-10-25'),
         ('high_seas', 'program db', DATE '2024-10-01'),
         ('arcade', 'program db', DATE '2024-06-16'),
-        ('juice', 'program db', DATE '2025-01-24')
+        ('juice', 'program db', DATE '2025-01-24'),
+        ('shrink', 'program db', DATE '2026-09-29')
     ) AS t(program_name, source_type, program_start_date)
 ),
 
@@ -307,6 +308,14 @@ source_updates AS (
         SELECT MAX(_fivetran_synced)::timestamptz AS last_updated_at FROM {{ source('airtable_juice', 'juice_stretches') }}
         UNION ALL
         SELECT MAX(_fivetran_synced)::timestamptz FROM {{ source('airtable_juice', 'jungle_stretches') }}
+    ) s
+
+    UNION ALL
+    SELECT 'shrink', MAX(last_updated_at)
+    FROM (
+        SELECT MAX(last_seen_at)::timestamptz AS last_updated_at FROM {{ source('shrink', 'users') }}
+        UNION ALL
+        SELECT MAX(fetched_at)::timestamptz FROM {{ source('shrink', 'hackatime_days') }}
     ) s
 )
 

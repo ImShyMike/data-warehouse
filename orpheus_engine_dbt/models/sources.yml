@@ -920,3 +920,12 @@ sources:
       - name: users
         description: "Snowglobe users table."
         meta: {dagster: {deps: [snowglobe_users_warehouse]}}
+  - name: shrink
+    schema: shrink
+    tables:
+      - name: users
+        description: "SHRINK users with Hack Club Auth email."
+        meta: { dagster: { deps: ['shrink_warehouse_mirror'] } }
+      - name: hackatime_days
+        description: "SHRINK per-user per-UTC-day Hackatime rollup; html_seconds is time on detected SHRINK projects."
+        meta: { dagster: { deps: ['shrink_warehouse_mirror'] } }

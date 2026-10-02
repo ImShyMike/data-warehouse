@@ -85,6 +85,7 @@ _SLING_CONNECTION_URL_ENV_VARS = [
     "PHANTOM_DATABASE_URL",
     "HALF_LIFE_DATABASE_URL",
     "CRESCENT_DATABASE_URL",
+    "SHRINK_DATABASE_URL",
     "WAREHOUSE_COOLIFY_URL",
 ]
 
@@ -344,6 +345,11 @@ crescent_db_connection = SlingConnectionResource(
     type="postgres",
     connection_string=EnvVar("CRESCENT_DATABASE_URL"),
 )
+shrink_db_connection = SlingConnectionResource(
+    name="SHRINK_DB",
+    type="postgres",
+    connection_string=EnvVar("SHRINK_DATABASE_URL"),
+)
 
 # 2. Target Connection (Warehouse Database)
 warehouse_db_connection = SlingConnectionResource(
@@ -388,6 +394,7 @@ sling_replication_resource = SlingResource(
         phantom_db_connection,
         half_life_db_connection,
         crescent_db_connection,
+        shrink_db_connection,
         warehouse_db_connection,
     ]
 )
@@ -4198,6 +4205,52 @@ def crescent_warehouse_mirror(
     for _ in sling.replicate(
         context=context,
         replication_config=crescent_replication_config,
+    ):
+        pass
+
+    context.log.info("Replication finished")
+    context.add_output_metadata({"replicated": True})
+    return None
+
+
+shrink_replication_config = {
+    "source": "SHRINK_DB",
+    "target": "WAREHOUSE_DB",
+
+    "defaults": {
+        "mode": "full-refresh",
+        "object": "shrink.{stream_table}",
+    },
+
+    "streams": {
+        "public.users": {
+            "select": [
+                "-hca_subject", "-display_name", "-avatar_url", "-slack_id",
+                "-verification_status", "-eligibility", "-eligibility_at",
+                "-birthdate", "-role", "-hca_token_encrypted",
+                "-hca_token_expires_at", "-hackatime_token_encrypted",
+                "-hackatime_linked_at",
+            ],
+        },
+        "public.hackatime_days": None,
+    },
+}
+
+@dg.asset(
+    name="shrink_warehouse_mirror",
+    group_name="sling",
+    compute_kind="sling",
+)
+def shrink_warehouse_mirror(
+    context: dg.AssetExecutionContext,
+    sling: SlingResource,
+) -> Nothing:
+    """Replicates the SHRINK DB → warehouse in a single shot."""
+    context.log.info("Starting SHRINK → warehouse Sling replication")
+
+    for _ in sling.replicate(
+        context=context,
+        replication_config=shrink_replication_config,
     ):
         pass
 

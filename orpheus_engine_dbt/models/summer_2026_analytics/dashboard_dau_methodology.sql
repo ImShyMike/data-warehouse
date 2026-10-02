@@ -13,6 +13,7 @@ SELECT DISTINCT
         WHEN 'hack_club_the_game' THEN 'Hack Club: The Game'
         WHEN 'athena_award' THEN 'Athena Award'
         WHEN 'high_seas' THEN 'High Seas'
+        WHEN 'shrink' THEN 'SHRINK'
         ELSE INITCAP(program_name)
     END AS program,
     dau_methodology,

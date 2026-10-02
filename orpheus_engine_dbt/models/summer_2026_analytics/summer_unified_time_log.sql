@@ -2124,6 +2124,47 @@ highway_activity AS (
     GROUP BY 1, 3
 ),
 
+shrink_daily AS (
+    SELECT
+        hd.day::date AS activity_day,
+        COALESCE(
+            CASE
+                WHEN POSITION('@' IN LOWER(BTRIM(u.email))) > 0
+                    THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u.email)), '@', 1), '+', 1)
+                         || '@' || SPLIT_PART(LOWER(BTRIM(u.email)), '@', 2)
+                ELSE NULLIF(SPLIT_PART(LOWER(BTRIM(u.email)), '+', 1), '')
+            END,
+            'shrink:' || hd.user_id
+        ) AS user_email,
+        SUM(hd.html_seconds)::numeric / 3600.0 AS day_hours
+    FROM {{ source('shrink', 'hackatime_days') }} hd
+    LEFT JOIN {{ source('shrink', 'users') }} u ON u.id = hd.user_id
+    WHERE hd.day::text ~ '^\d{4}-\d{2}-\d{2}$'
+      AND hd.day::date >= DATE '2026-09-29'
+      AND hd.html_seconds > 0
+    GROUP BY 1, 2
+),
+
+shrink_activity AS (
+    SELECT
+        (sd.activity_day::timestamp + (h.hr * INTERVAL '1 hour')) AS activity_hour,
+        'shrink'::text AS program_name,
+        sd.user_email,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        'daily_user_activity'::text AS logging_method,
+        ROUND((sd.day_hours / 24.0)::numeric, 6) AS raw_hours_logged,
+        ROUND((sd.day_hours / 24.0)::numeric, 6) AS credited_hours_logged,
+        1::smallint AS split_factor,
+        'none'::text AS overlap_type,
+        NULL::text[] AS overlapping_programs,
+        NULL::text AS hackatime_alias,
+        'shrink.hackatime_days; detected SHRINK project seconds spread across 24h'::text AS source_detail,
+        NULL::timestamptz AS claim_started_at
+    FROM shrink_daily sd
+    CROSS JOIN hours_of_day h
+),
+
 -- ============================================================
 -- 7. FINAL UNION (already bounded to each program's run window upstream)
 -- ============================================================
@@ -2139,6 +2180,8 @@ combined AS (
     SELECT * FROM fallout_activity_log
     UNION ALL
     SELECT * FROM highway_activity
+    UNION ALL
+    SELECT * FROM shrink_activity
 ),
 
 -- The rows that actually land in the table: every time-bearing row plus the

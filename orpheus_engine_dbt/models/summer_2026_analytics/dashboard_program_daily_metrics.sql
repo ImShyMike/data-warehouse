@@ -47,7 +47,8 @@ program_labels AS (
         ('summer_of_making', 'Summer of Making'),
         ('hack_club_the_game', 'Hack Club: The Game'),
         ('athena_award', 'Athena Award'),
-        ('high_seas', 'High Seas')
+        ('high_seas', 'High Seas'),
+        ('shrink', 'SHRINK')
     ) AS t(program_name, program_label)
 )
 
