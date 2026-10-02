@@ -250,6 +250,8 @@ WITH program_windows AS (
         ('snowglobe', TIMESTAMP WITH TIME ZONE '2026-08-30 00:00:00+00',
                    NULL::timestamptz),
         ('thirdspace', TIMESTAMP WITH TIME ZONE '2026-08-22 04:00:00+00',
+                   NULL::timestamptz),
+        ('club_shop', TIMESTAMP WITH TIME ZONE '2026-08-01 00:00:00+00',
                    NULL::timestamptz)
     ) AS t(program_name, start_at, end_at_exclusive)
 ),
@@ -1775,6 +1777,32 @@ hackatime_matches AS (
 -- DAU is unaffected by the cap. The cap applies per logging path: a user-day
 -- can still exceed 24h when a program counts hackatime AND custom time
 -- (different sources, deliberately not netted against each other).
+club_shop_activity AS (
+    SELECT
+        a."day"::timestamp AS activity_hour,
+        'club_shop'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(u."primary_email"))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."primary_email")), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(u."primary_email")), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(u."primary_email")), '+', 1)
+        END AS user_email,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        'daily_user_activity'::text AS logging_method,
+        0::numeric AS raw_hours_logged,
+        0::numeric AS credited_hours_logged,
+        1::smallint AS split_factor,
+        'none'::text AS overlap_type,
+        NULL::text[] AS overlapping_programs,
+        NULL::text AS hackatime_alias,
+        'club_shop.user_activity_days (DAU only, no durations)'::text AS source_detail,
+        NULL::timestamptz AS claim_started_at
+    FROM {{ source('club_shop', 'user_activity_days') }} a
+    JOIN {{ source('club_shop', 'users') }} u ON u."id" = a."user_id"
+    WHERE u."primary_email" IS NOT NULL
+    GROUP BY 1, 3
+),
+
 custom_in_window AS (
     SELECT
         activity_hour,
@@ -2216,6 +2244,8 @@ combined AS (
     SELECT * FROM highway_activity
     UNION ALL
     SELECT * FROM shrink_activity
+    UNION ALL
+    SELECT * FROM club_shop_activity
 ),
 
 -- The rows that actually land in the table: every time-bearing row plus the
@@ -2231,7 +2261,7 @@ final_rows AS (
         (activity_hour AT TIME ZONE 'America/New_York')::date AS activity_date
     FROM combined
     WHERE credited_hours_logged > 0
-       OR logging_method IN ('github_commit_days', 'hardware_build')
+       OR logging_method IN ('github_commit_days', 'hardware_build', 'daily_user_activity')
 ),
 
 -- ============================================================

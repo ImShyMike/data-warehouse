@@ -40,6 +40,7 @@ from .assets import (
     half_life_warehouse_mirror,
     crescent_warehouse_mirror,
     shrink_warehouse_mirror,
+    club_shop_warehouse_mirror,
     sling_replication_resource,
 )
 
@@ -79,6 +80,7 @@ defs = Definitions(
         half_life_warehouse_mirror,
         crescent_warehouse_mirror,
         shrink_warehouse_mirror,
+        club_shop_warehouse_mirror,
         auth_warehouse_mirror,
     ],
     resources={
