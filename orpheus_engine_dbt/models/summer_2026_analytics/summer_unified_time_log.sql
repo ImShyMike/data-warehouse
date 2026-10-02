@@ -252,7 +252,9 @@ WITH program_windows AS (
         ('thirdspace', TIMESTAMP WITH TIME ZONE '2026-08-22 04:00:00+00',
                    NULL::timestamptz),
         ('club_shop', TIMESTAMP WITH TIME ZONE '2026-08-01 00:00:00+00',
-                   NULL::timestamptz)
+                   NULL::timestamptz),
+        ('wrangler', TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00',
+                   TIMESTAMP WITH TIME ZONE '2026-09-30 00:00:00+00')
     ) AS t(program_name, start_at, end_at_exclusive)
 ),
 
@@ -1687,6 +1689,26 @@ thirdspace_ht_claims AS (
     WHERE alias.alias_text IS NOT NULL AND BTRIM(alias.alias_text) <> ''
 ),
 
+wrangler_ht_claims AS (
+    SELECT 'wrangler'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(hp."email"))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(hp."email")), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(hp."email")), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(hp."email")), '+', 1)
+        END AS user_email,
+        LOWER(BTRIM(hp."linked_lapse_lookout_hackatime_links")) AS hackatime_alias,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00' AS claim_start_ts
+    FROM {{ source('airtable_wrangler', 'ysws_project_submission') }} hp
+        LOWER(REPLACE(BTRIM(SPLIT_PART(url, '/project/', 2)), '+', ' ')) AS hackatime_alias,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00' AS claim_start_ts
+    FROM {{ source('airtable_wrangler', 'ysws_project_submission') }} hp
+    CROSS JOIN LATERAL unnest(string_to_array(hp."linked_lapse_lookout_hackatime_links", E'\n')) AS url
+    WHERE url LIKE '%/project/%'
+),
 
 all_claims_raw AS (
     SELECT * FROM stardance_ht_claims
@@ -1711,6 +1733,7 @@ all_claims_raw AS (
     UNION ALL SELECT * FROM crescent_ht_claims
     UNION ALL SELECT * FROM snowglobe_ht_claims
     UNION ALL SELECT * FROM thirdspace_ht_claims
+    UNION ALL SELECT * FROM wrangler_ht_claims
 ),
 
 all_claims AS (

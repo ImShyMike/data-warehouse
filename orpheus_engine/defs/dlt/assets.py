@@ -712,6 +712,12 @@ snowglobe_assets = create_airtable_sync_assets(
     drop_columns={"users": ["hackatime_access_token"]},
 )
 
+wrangler_assets = create_airtable_sync_assets(
+    base_name="wrangler",
+    tables=["ysws_project_submission", "shop_queue", "currency", "ysws_config"],
+    description="Loads wrangler data into the warehouse.airtable_wrangler schema."
+)
+
 # --- DLT Asset: Loads Data into Warehouse using DLT ---
 @asset(
     compute_kind="dlt", # Tagging the compute type for UI clarity
