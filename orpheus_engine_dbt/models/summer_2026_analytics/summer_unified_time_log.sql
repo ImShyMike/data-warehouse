@@ -254,7 +254,9 @@ WITH program_windows AS (
         ('club_shop', TIMESTAMP WITH TIME ZONE '2026-08-01 00:00:00+00',
                    NULL::timestamptz),
         ('wrangler', TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00',
-                   TIMESTAMP WITH TIME ZONE '2026-09-30 00:00:00+00')
+                   TIMESTAMP WITH TIME ZONE '2026-09-30 00:00:00+00'),
+        ('playground', TIMESTAMP WITH TIME ZONE '2026-09-25 00:00:00 America/New_York',
+                   TIMESTAMP WITH TIME ZONE '2026-10-12 00:00:00 America/New_York')
     ) AS t(program_name, start_at, end_at_exclusive)
 ),
 
@@ -1659,6 +1661,23 @@ snowglobe_ht_claims AS (
     WHERE hp."hackatime_proj_name" IS NOT NULL AND hp."hackatime_proj_name" <> ''
 ),
 
+playground_ht_claims AS (
+    SELECT 'playground'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(u."email"))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(u."email")), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(u."email")), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(u."email")), '+', 1)
+        END AS user_email,
+        LOWER(BTRIM(alias_val)) AS hackatime_alias,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        hp."created_at" AT TIME ZONE 'UTC' AS claim_start_ts
+    FROM {{ source('playground', 'projects') }} hp
+    JOIN {{ source('playground', 'users') }} u ON u."id" = hp."user_id"
+    CROSS JOIN LATERAL unnest(hp."hackatime_projects"::text[]) AS alias_val
+    WHERE alias_val IS NOT NULL AND alias_val <> ''
+),
+
 -- third space links Hackatime by hackatime_tokens.hackatime_user_id (NOT email), and stores
 -- project_hackatime.hackatime_projects as a Postgres text[] (e.g. '{my-proj}').
 -- Map the hackatime user id to the Hackatime email so thirdspace joins the shared
@@ -1734,6 +1753,7 @@ all_claims_raw AS (
     UNION ALL SELECT * FROM snowglobe_ht_claims
     UNION ALL SELECT * FROM thirdspace_ht_claims
     UNION ALL SELECT * FROM wrangler_ht_claims
+    UNION ALL SELECT * FROM playground_ht_claims
 ),
 
 all_claims AS (
