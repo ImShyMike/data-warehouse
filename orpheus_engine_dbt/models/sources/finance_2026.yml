@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: finance_2026
+    schema: finance_2026
+    tables:
+      - name: major_gifts
+        description: "Major gifts tracking for 2026 fundraising."
+      - name: monthly_finances
+        description: "Monthly finance summaries (expenses, other revenue, HQ interest)."
+      - name: hcb_expense_reporting
+        description: "HCB expense reporting with interest and grant revenue."

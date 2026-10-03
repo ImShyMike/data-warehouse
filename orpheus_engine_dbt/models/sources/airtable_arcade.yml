@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: airtable_arcade
+    schema: airtable_arcade__summer_24__app4kcwulfb02bv8q
+    tables:
+      - name: sessions
+        description: "Arcade live 'Hack Hour' coding sessions: created_at (start), minutes (Hackatime-tracked), status (Approved/Banked/Unreviewed/Rejected), fraud flag, code_url, user link. approved_minutes is the reviewer-haircut value (not used)."
+      - name: users
+        description: "Arcade users (record_id, normalized email, slack_id, open_fraud_case fraud flag)."

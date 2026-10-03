@@ -1,0 +1,30 @@
+version: 2
+
+sources:
+  - name: unified_ysws
+    schema: airtable_unified_ysws_projects_db
+    tables:
+      - name: ysws_programs
+        description: "YSWS program registry from Airtable; hcb column links programs to HCB org URLs."
+        meta: { dagster: { asset_key: ['unified_ysws_ysws_programs_warehouse'] } }
+      - name: ysws_authors
+        description: >
+          The YSWS reviewer/staff roster ("YSWS Authors"). hcb_budget_fund is a
+          hand-typed URL to the person's personal HCB budget org and is the only
+          person -> budget link there is; ysws_budget_people parses it and
+          reports every way it is broken.
+        meta: { dagster: { asset_key: ['unified_ysws_ysws_authors_warehouse'] } }
+      - name: approved_projects
+        description: "Unified YSWS approved projects with email and weighted project contribution fields."
+        meta: { dagster: { asset_key: ['unified_ysws_approved_projects_warehouse'] } }
+      - name: approved_projects__ysws_name
+        description: "dlt child table: per-project YSWS program name(s) for approved_projects."
+        meta: { dagster: { asset_key: ['unified_ysws_approved_projects_warehouse'] } }
+      - name: approved_projects__ysws
+        description: >
+          dlt child table: per-project linked YSWS program Airtable RECORD IDs
+          for approved_projects. The stable join key for attributing projects
+          and weighted hours to a program (names get renamed).
+        meta: { dagster: { asset_key: ['unified_ysws_approved_projects_warehouse'] } }
+
+  # Absolute minimum permissions - only columns needed to generate events for monthly active stats

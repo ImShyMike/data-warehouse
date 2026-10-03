@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: moonshot
+    schema: moonshot
+    quoting:
+      identifier: true
+    tables:
+      - name: User
+        description: "Moonshot users with email, hackatimeId, slack, and status (UserStatus enum incl. 'FraudSuspect'); token columns excluded from the manual mirror."
+      - name: Project
+        description: "Moonshot projects with userId, codeUrl, and shipped/viral flags (no timestamp columns)."
+      - name: HackatimeProjectLink
+        description: "Moonshot project↔Hackatime alias linkage (hackatimeName); banked rawHours/hoursOverride are reviewer totals, not daily activity."

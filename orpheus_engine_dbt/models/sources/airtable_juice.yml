@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: airtable_juice
+    schema: airtable_juice_appfnfjafslg23jlt
+    tables:
+      - name: juice_stretches
+        description: "Juice live work 'stretches': start_time/end_time, time_worked_seconds (pauses excluded), email_from_signups_, slack_id, is_canceled."
+      - name: jungle_stretches
+        description: "Juice 'Jungle' mini-game work stretches: same shape as juice_stretches (start_time, time_worked_seconds, email_from_signups_, is_canceled)."

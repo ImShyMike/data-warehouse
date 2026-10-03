@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: airtable_high_seas
+    schema: airtable_high_seas___ysws_apptenfycuiyfgcr6
+    tables:
+      - name: people
+        description: "High Seas participants (record_id, normalized email, slack_id, disciplinary status)."
+      - name: ships
+        description: "High Seas ship submissions; wakatime_project_name is the per-ship Hackatime alias, entrant_record_id links to people, entrant_disciplinary_status/entrant_freeze_activity are the ban/fraud gate, repo_url/title for display. Banked hours/credited_hours/total_hours are snapshot totals (not daily activity)."
