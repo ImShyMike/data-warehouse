@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: blueprint
+    schema: blueprint
+    tables:
+      - name: users
+        description: "Blueprint users."
+        meta: { dagster: { deps: ['blueprint_warehouse_mirror'] } }
+      - name: projects
+        description: "Blueprint projects with repo_link."
+        meta: { dagster: { deps: ['blueprint_warehouse_mirror'] } }
+      - name: journal_entries
+        description: "Blueprint journal entries with duration_seconds."
+        meta: { dagster: { deps: ['blueprint_warehouse_mirror'] } }

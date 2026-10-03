@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: loops
+    schema: loops
+    tables:
+      - name: audience
+        description: "Loops audience data loaded into warehouse via DLT"
+        meta: { dagster: { asset_key: ['loops_audience'] } }

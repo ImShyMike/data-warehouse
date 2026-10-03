@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: hackatime_legacy_raw
+    schema: hackatime_legacy
+    tables:
+      - name: heartbeats
+        description: "Raw heartbeat data replicated from the Hackatime Legacy database by Sling."
+        meta: { dagster: { deps: ['hackatime_legacy_warehouse_mirror'] } }
