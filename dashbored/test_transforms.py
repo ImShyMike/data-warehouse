@@ -391,44 +391,19 @@ def test_check_conflicts(assets_source):
     assert check_conflicts(assets_source, PROGRAM) is None
 
 
-def test_patch_assets_py(assets_source, generated):
-    patched = patch_assets_py(assets_source, PROGRAM, generated)
-    compile(patched, "assets.py", "exec")
+def test_program_file(generated):
+    program_file = generated["program_file"]
+    compile(program_file, "programs/test_program.py", "exec")
 
-    env_vars = [
-        e.value for e in assigned_value(patched, "_SLING_CONNECTION_URL_ENV_VARS").elts
-    ]
-    assert "TEST_PROGRAM_DATABASE_URL" in env_vars
+    assert "test_program_db_connection = SlingConnectionResource(" in program_file
+    assert "test_program_replication_config = {" in program_file
+    assert "def test_program_warehouse_mirror(" in program_file
+    assert 'EnvVar("TEST_PROGRAM_DATABASE_URL")' in program_file
+    assert "from .._helpers import _ensure_incremental_target_indexes" in program_file
+    assert "from dagster import EnvVar, Nothing" in program_file
 
-    connections = call_kwarg_names(
-        assigned_value(patched, "sling_replication_resource"), "connections"
-    )
-    assert "test_program_db_connection" in connections
-    assert connections.index("test_program_db_connection") < connections.index(
-        "warehouse_db_connection"
-    )
-
-    assert assignment_order(patched, "test_program_db_connection") < assignment_order(
-        patched, "sling_replication_resource"
-    )
-    assert assigned_value(patched, "test_program_replication_config")
-    assert "def test_program_warehouse_mirror(" in patched
-
-
-def test_patch_definitions_py(definitions_source, generated):
-    patched = patch_definitions_py(definitions_source, PROGRAM, generated)
-    compile(patched, "definitions.py", "exec")
-
-    imported = {
-        alias.name
-        for node in ast.walk(ast.parse(patched))
-        if isinstance(node, ast.ImportFrom)
-        for alias in node.names
-    }
-    assert "test_program_warehouse_mirror" in imported
-
-    assets = call_kwarg_names(assigned_value(patched, "defs"), "assets")
-    assert "test_program_warehouse_mirror" in assets
+    undef = undefined_names(program_file)
+    assert not undef, f"program file has undefined names: {undef}"
 
 
 def test_patch_sources_yml(sources_source, generated):
@@ -526,7 +501,8 @@ def test_dau_model_refuses_a_program_it_already_carries(dau_source, generated):
 
 def test_validate_locally(generated):
     results = validate_locally(REPO_ROOT, PROGRAM, generated)
-    assert set(results) >= {"assets.py", "definitions.py", "sources.yml"}
+    assert "program_file" in results
+    assert results["program_file"]["ok"]
     assert all(r["ok"] for r in results.values()), results
 
 

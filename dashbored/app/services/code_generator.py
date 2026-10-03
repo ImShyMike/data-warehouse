@@ -61,6 +61,8 @@ class CodeGenerator:
             ])
         )
 
+        pieces["program_file"] = self._program_file(pieces)
+
         if custom_sql:
             pieces["dau_sql"] = "\n\n".join(
                 filter(None, [pieces["dau_program_window"], custom_sql])
@@ -173,6 +175,28 @@ class CodeGenerator:
             seen.add(ident)
             keys.append(key)
         return keys
+
+    def _has_incremental(self) -> bool:
+        configs = self.state.get("sync_configs") or {}
+        return any(
+            (self._for_key(configs, key) or {}).get("mode") == "incremental"
+            for key in self._selected_tables()
+        )
+
+    def _program_file(self, pieces: dict) -> str:
+        imports = [
+            "import dagster as dg",
+            "from dagster_sling import SlingConnectionResource, SlingResource",
+            "from dagster import EnvVar, Nothing",
+        ]
+        if self._has_incremental():
+            imports.append("from .._helpers import _ensure_incremental_target_indexes")
+
+        return "\n".join(imports) + "\n\n\n" + "\n\n\n".join([
+            pieces["connection_resource"],
+            pieces["replication_config"],
+            pieces["asset_function"],
+        ]) + "\n"
 
     def _connection_resource(self) -> str:
         return (
