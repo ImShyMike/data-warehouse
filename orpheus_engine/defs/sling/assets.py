@@ -1,18 +1,14 @@
-from dagster import EnvVar, AssetExecutionContext, Nothing
+from dagster import EnvVar, Nothing
 from dagster_sling import SlingResource, SlingConnectionResource
-from typing import Mapping, Any
-from urllib.parse import urlparse, parse_qs, parse_qsl, urlencode, urlunparse
+from typing import Any
+from urllib.parse import urlparse, parse_qs
 import dagster as dg
-import hashlib
 import ipaddress
 import os
 import base64
 import psycopg2
 from psycopg2 import sql
 from ._helpers import (
-    _sling_connection_url,
-    _safe_index_name,
-    _replication_index_specs,
     _drop_invalid_indexes,
     _ensure_target_indexes,
     _ensure_incremental_target_indexes,
@@ -145,12 +141,14 @@ _program_assets = []
 
 for _, _mod_name, _ in _pkgutil.iter_modules(_programs_pkg.__path__):
     _mod = _importlib.import_module(f".programs.{_mod_name}", __package__)
+    if getattr(_mod, "__disabled__", False):
+        continue
     _conn = getattr(_mod, f"{_mod_name}_db_connection", None)
     if _conn is not None:
         _program_connections.append(_conn)
         # Validate SSL configuration
-        if hasattr(_conn, 'connection_string') and hasattr(_conn.connection_string, 'env_var'):
-            _validate_sslmode_disable_is_tailscale(_conn.connection_string.env_var)
+        if hasattr(_conn, 'connection_string') and hasattr(_conn.connection_string, 'env_var_name'):
+            _validate_sslmode_disable_is_tailscale(_conn.connection_string.env_var_name)
     _asset_fn = getattr(_mod, f"{_mod_name}_warehouse_mirror", None)
     if _asset_fn is not None:
         _program_assets.append(_asset_fn)

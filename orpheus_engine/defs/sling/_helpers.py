@@ -31,6 +31,7 @@ def _sling_connection_url(env_var_name: str) -> EnvVar:
     derived_env_var_name = f"{env_var_name}_SLING"
     cleaned_url = urlunparse(parsed._replace(query=urlencode(cleaned_query_pairs)))
     os.environ.setdefault(derived_env_var_name, cleaned_url)
+    return EnvVar(derived_env_var_name)
 
 def _safe_index_name(*parts: str) -> str:
     raw_name = "_".join(["idx", *parts])

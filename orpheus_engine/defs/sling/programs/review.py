@@ -1,3 +1,7 @@
+# Source Postgres no longer exists (Shipwrights moved to MySQL, May 2026).
+# Re-enable once REVIEW_COOLIFY_URL points somewhere real.
+__disabled__ = True
+
 import dagster as dg
 from dagster_sling import SlingConnectionResource, SlingResource
 from dagster import EnvVar, Nothing
