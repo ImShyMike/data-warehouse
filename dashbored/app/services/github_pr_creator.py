@@ -31,7 +31,7 @@ SLING_PROGRAMS_DIR = "orpheus_engine/defs/sling/programs"
 AIRTABLE_DEFINITIONS_PATH = "orpheus_engine/defs/airtable/definitions.py"
 GENERATED_IDS_PATH = "orpheus_engine/defs/airtable/generated_ids.py"
 DLT_ASSETS_PATH = "orpheus_engine/defs/dlt/assets.py"
-SOURCES_YML_PATH = "orpheus_engine_dbt/models/sources.yml"
+SOURCES_DIR = "orpheus_engine_dbt/models/sources"
 DAU_MODEL_PATH = "orpheus_engine_dbt/models/summer_2026_analytics/summer_unified_time_log.sql"
 
 
@@ -102,11 +102,18 @@ class _GithubPrBase:
             raise
 
     def _check_conflicts(self):
-        # Both source types write sources.yml, so this belongs here rather than
-        # in either subclass.
-        conflict = sources_yml_conflict(self._require_file(SOURCES_YML_PATH), self.generated)
-        if conflict:
-            raise ConflictError(conflict)
+        source_file = _sources_file_path(self.generated)
+        try:
+            self._require_file(source_file)
+            source_name = _dbt_source_name(self.generated)
+            raise ConflictError(
+                f"{source_file} already exists — dbt source {source_name!r} "
+                f"is already declared. Pick a different program name."
+            )
+        except Exception as e:
+            if isinstance(e, ConflictError):
+                raise
+            pass  # file doesn't exist, no conflict
 
         if not wants_dau(self.generated):
             return
@@ -146,9 +153,10 @@ class _GithubPrBase:
         return [self._blob(DAU_MODEL_PATH, patched)]
 
     def _sources_tree_entry(self) -> list[dict]:
-        content = self._require_file(SOURCES_YML_PATH)
-        patched = patch_sources_yml(content, self.generated)
-        return [self._blob(SOURCES_YML_PATH, patched)]
+        return [self._blob(
+            _sources_file_path(self.generated),
+            sources_file_content(self.generated),
+        )]
 
     def _dau_section(self) -> str:
         custom = custom_dau_sql(self.generated)
@@ -483,36 +491,28 @@ def _visit_required(tree: cst.Module, inserter: cst.CSTTransformer, what: str) -
     return tree
 
 
+def _dbt_source_name(generated: dict) -> str:
+    """Extract the dbt source name from the generated sources_yml fragment."""
+    text = generated.get("sources_yml", "")
+    m = re.search(r'name:\s*(\S+)', text)
+    return m.group(1) if m else ""
+
+
+def _sources_file_path(generated: dict) -> str:
+    return f"{SOURCES_DIR}/{_dbt_source_name(generated)}.yml"
+
+
+def sources_file_content(generated: dict) -> str:
+    """Produce a standalone dbt source file from the generated fragment."""
+    fragment = generated.get("sources_yml", "")
+    if not fragment:
+        return ""
+    return "version: 2\n\nsources:\n" + fragment + "\n"
+
+
 def patch_sources_yml(source: str, generated: dict) -> str:
-    new_source_text = generated.get("sources_yml", "")
-    if not new_source_text:
-        return source
-    return source.rstrip() + "\n" + new_source_text + "\n"
-
-
-def sources_yml_conflict(source: str, generated: dict) -> str | None:
-    """A dbt source name may only appear once in the project.
-
-    patch_sources_yml is a blind append, and a repeated `- name:` is valid YAML
-    that compiles fine, so neither the patcher nor validate_locally notices. dbt
-    refuses the whole project at parse time — every model, not just this one —
-    and in a 600-line file the duplicate line looks exactly like a correct
-    addition to whoever reviews the PR.
-    """
-    try:
-        after = yaml.safe_load(patch_sources_yml(source, generated)) or {}
-    except yaml.YAMLError as e:
-        return f"{SOURCES_YML_PATH} would not be valid YAML after patching: {e}"
-
-    names = [s.get("name") for s in (after.get("sources") or []) if isinstance(s, dict)]
-    dupes = sorted({n for n in names if n and names.count(n) > 1})
-    if not dupes:
-        return None
-    return (
-        f"{SOURCES_YML_PATH} already declares the dbt source "
-        f"{', '.join(repr(d) for d in dupes)}. Adding it again is valid YAML but dbt "
-        f"refuses the entire project — pick a different program name."
-    )
+    """Deprecated: kept for test compatibility. Use sources_file_content instead."""
+    return sources_file_content(generated)
 
 
 def wants_dau(generated: dict) -> bool:
@@ -1420,9 +1420,6 @@ def validate_locally(repo_root: Path | None, program: str, generated: dict) -> d
                 results["program_file"] = {"ok": False, "error": str(e)}
         checks = []
 
-    checks.append(
-        ("sources.yml", SOURCES_YML_PATH, lambda s: patch_sources_yml(s, generated), _yaml_check)
-    )
     if wants_dau(generated):
         checks.append(
             (DAU_MODEL_PATH.rsplit("/", 1)[-1], DAU_MODEL_PATH,
@@ -1440,5 +1437,13 @@ def validate_locally(repo_root: Path | None, program: str, generated: dict) -> d
             results[label] = {"ok": True, "lines": patched.count("\n")}
         except Exception as e:
             results[label] = {"ok": False, "error": str(e)}
+
+    source_file_label = _sources_file_path(generated).rsplit("/", 1)[-1]
+    try:
+        content = sources_file_content(generated)
+        _yaml_check(content, source_file_label)
+        results[source_file_label] = {"ok": True, "lines": content.count("\n")}
+    except Exception as e:
+        results[source_file_label] = {"ok": False, "error": str(e)}
 
     return results

@@ -26,16 +26,19 @@ from app.services.github_pr_creator import (
     AIRTABLE_DEFINITIONS_PATH,
     DLT_ASSETS_PATH,
     GENERATED_IDS_PATH,
-    SOURCES_YML_PATH,
+    SOURCES_DIR,
     AirtablePrCreator,
     ConflictError,
     check_conflicts,
+    check_program_file_conflict,
     patch_airtable_definitions,
     patch_assets_py,
     patch_definitions_py,
     patch_dlt_assets,
     patch_generated_ids,
     patch_sources_yml,
+    sources_file_content,
+    _dbt_source_name,
     patch_dau_sql,
     validate_locally,
 )
@@ -190,11 +193,6 @@ def assets_source():
 @pytest.fixture(scope="module")
 def definitions_source():
     return repo_file("orpheus_engine/defs/sling/definitions.py")
-
-
-@pytest.fixture(scope="module")
-def sources_source():
-    return repo_file("orpheus_engine_dbt/models/sources.yml")
 
 
 @pytest.fixture(scope="module")
@@ -362,7 +360,9 @@ def test_asset_function_is_valid_python(generated):
 
 
 def test_sources_yml_fragment_parses(generated):
-    parsed = yaml.safe_load("sources:\n" + generated["sources_yml"])
+    content = sources_file_content(generated)
+    parsed = yaml.safe_load(content)
+    assert parsed["version"] == 2
     entry = parsed["sources"][0]
     assert entry["name"] == PROGRAM
     assert entry["schema"] == PROGRAM
@@ -387,8 +387,10 @@ def test_dau_ctes(generated):
 
 
 def test_check_conflicts(assets_source):
-    assert check_conflicts(assets_source, "stardance")
+    assert check_conflicts(assets_source, "hackatime")
     assert check_conflicts(assets_source, PROGRAM) is None
+    assert check_program_file_conflict("stardance", REPO_ROOT)
+    assert check_program_file_conflict(PROGRAM, REPO_ROOT) is None
 
 
 def test_program_file(generated):
@@ -406,14 +408,15 @@ def test_program_file(generated):
     assert not undef, f"program file has undefined names: {undef}"
 
 
-def test_patch_sources_yml(sources_source, generated):
-    patched = patch_sources_yml(sources_source, generated)
-    before = yaml.safe_load(sources_source)["sources"]
-    after = yaml.safe_load(patched)["sources"]
-    assert len(after) == len(before) + 1
-
-    entry = next(s for s in after if s["name"] == PROGRAM)
+def test_sources_file_is_standalone(generated):
+    content = sources_file_content(generated)
+    parsed = yaml.safe_load(content)
+    assert parsed["version"] == 2
+    assert len(parsed["sources"]) == 1
+    entry = parsed["sources"][0]
+    assert entry["name"] == PROGRAM
     assert [t["name"] for t in entry["tables"]] == ["users", "projects", "devlogs"]
+    assert _dbt_source_name(generated) == PROGRAM
 
 
 def test_patch_dau_sql(dau_source, generated):
@@ -503,6 +506,8 @@ def test_validate_locally(generated):
     results = validate_locally(REPO_ROOT, PROGRAM, generated)
     assert "program_file" in results
     assert results["program_file"]["ok"]
+    assert "test_program.yml" in results
+    assert results["test_program.yml"]["ok"]
     assert all(r["ok"] for r in results.values()), results
 
 
@@ -580,12 +585,13 @@ def test_airtable_duplicate_program_is_refused(airtable_definitions_source):
 def test_airtable_new_program_passes_the_same_gate(airtable_generated):
     creator = airtable_pr_creator(PROGRAM, airtable_generated)
     creator._check_conflicts()
-    assert {e["path"] for e in creator._build_tree()} >= {
+    paths = {e["path"] for e in creator._build_tree()}
+    assert paths >= {
         AIRTABLE_DEFINITIONS_PATH,
         GENERATED_IDS_PATH,
         DLT_ASSETS_PATH,
-        SOURCES_YML_PATH,
     }
+    assert any(p.startswith(SOURCES_DIR) for p in paths)
 
 
 def test_airtable_sensitive_fields_are_excluded_or_refused():
@@ -635,7 +641,7 @@ def test_airtable_hostile_identifiers(airtable_definitions_source, dlt_assets_so
     assert "source('airtable_test_program', 'weird_table')" in generated["dau_custom_hourly"]
 
 
-def test_postgres_hostile_identifiers(assets_source, sources_source):
+def test_postgres_hostile_identifiers(assets_source):
     quoted = 'he said "hi"'
     state = {
         "program_name": "hostile",
@@ -675,19 +681,19 @@ def test_postgres_hostile_identifiers(assets_source, sources_source):
         },
     }
     generated = CodeGenerator(state).generate()
-    compile(patch_assets_py(assets_source, "hostile", generated), "assets.py", "exec")
+    compile(generated["program_file"], "programs/hostile.py", "exec")
 
     config = assigned_value(generated["replication_config"], "hostile_replication_config")
     streams = ast.literal_eval(dict_entry(config, "streams"))
     assert streams["public.logs"]["update_key"] == quoted
     assert streams["public.logs"]["select"] == ['-secret"token']
 
-    entry = yaml.safe_load("sources:\n" + generated["sources_yml"])["sources"][0]
+    content = sources_file_content(generated)
+    parsed = yaml.safe_load(content)
+    assert parsed["version"] == 2
+    entry = parsed["sources"][0]
     assert [t["name"] for t in entry["tables"]] == ["on", "logs"]
-
-    patched = patch_sources_yml(sources_source, generated)
-    names = [s["name"] for s in yaml.safe_load(patched)["sources"]]
-    assert names.count("hostile") == 1
+    assert _dbt_source_name(generated) == "hostile"
 
     assert 'a."he said ""hi"""' in generated["dau_custom_hourly"]
 
@@ -749,5 +755,5 @@ def test_two_airtable_fields_cannot_share_a_generated_ids_constant():
 
 def test_validate_locally_airtable(airtable_generated):
     results = validate_locally(REPO_ROOT, PROGRAM, airtable_generated)
-    assert set(results) >= {"airtable/definitions.py", "dlt/assets.py", "sources.yml"}
+    assert set(results) >= {"airtable/definitions.py", "dlt/assets.py", "airtable_test_program.yml"}
     assert all(r["ok"] for r in results.values()), results
