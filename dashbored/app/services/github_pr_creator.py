@@ -27,6 +27,7 @@ API_TIMEOUT = 10
 FORK_READY_TIMEOUT = 10
 SLING_ASSETS_PATH = "orpheus_engine/defs/sling/assets.py"
 SLING_DEFINITIONS_PATH = "orpheus_engine/defs/sling/definitions.py"
+SLING_PROGRAMS_DIR = "orpheus_engine/defs/sling/programs"
 AIRTABLE_DEFINITIONS_PATH = "orpheus_engine/defs/airtable/definitions.py"
 GENERATED_IDS_PATH = "orpheus_engine/defs/airtable/generated_ids.py"
 DLT_ASSETS_PATH = "orpheus_engine/defs/dlt/assets.py"
@@ -291,24 +292,19 @@ class GithubPrCreator(_GithubPrBase):
 
     def _check_conflicts(self):
         super()._check_conflicts()
+        program_file_path = f"{SLING_PROGRAMS_DIR}/{self.program}.py"
+        if self._fetch_file(program_file_path) is not None:
+            raise ConflictError(
+                f"Program '{self.program}' already has a file at {program_file_path}"
+            )
         conflict = check_conflicts(self._require_file(SLING_ASSETS_PATH), self.program)
         if conflict:
             raise ConflictError(conflict)
 
     def _build_tree(self) -> list[dict]:
+        program_file_path = f"{SLING_PROGRAMS_DIR}/{self.program}.py"
         entries = [
-            self._blob(
-                SLING_ASSETS_PATH,
-                patch_sling_assets(
-                    self._require_file(SLING_ASSETS_PATH), self.program, self.generated
-                ),
-            ),
-            self._blob(
-                SLING_DEFINITIONS_PATH,
-                patch_definitions_py(
-                    self._require_file(SLING_DEFINITIONS_PATH), self.program, self.generated
-                ),
-            ),
+            self._blob(program_file_path, self.generated["program_file"]),
         ]
         entries.extend(self._sources_tree_entry())
         entries.extend(self._dau_tree_entries())
@@ -398,7 +394,7 @@ field IDs for the new base are included in `generated_ids.py`, read from the bas
 
 
 def check_conflicts(source: str, program: str) -> str | None:
-    """Walk the CST to check if a program already exists in assets.py."""
+    """Check if a program already exists in assets.py (legacy monolith check)."""
     try:
         tree = cst.parse_module(source)
     except cst.ParserSyntaxError:
@@ -411,6 +407,15 @@ def check_conflicts(source: str, program: str) -> str | None:
         for name in names:
             if name in target_names:
                 return f"Program '{program}' already exists in assets.py (found {name})"
+    return None
+
+
+def check_program_file_conflict(program: str, repo_root: Path | None = None) -> str | None:
+    """Check if a per-program file already exists."""
+    if repo_root is not None:
+        path = repo_root / SLING_PROGRAMS_DIR / f"{program}.py"
+        if path.exists():
+            return f"Program '{program}' already has a file at {SLING_PROGRAMS_DIR}/{program}.py"
     return None
 
 
@@ -1391,6 +1396,8 @@ def validate_locally(repo_root: Path | None, program: str, generated: dict) -> d
     if repo_root is None:
         return {}
 
+    results = {}
+
     if generated.get("source_type") == "airtable":
         checks = [
             ("airtable/definitions.py", AIRTABLE_DEFINITIONS_PATH,
@@ -1401,12 +1408,17 @@ def validate_locally(repo_root: Path | None, program: str, generated: dict) -> d
              lambda s: patch_dlt_assets(s, generated), _compile_check),
         ]
     else:
-        checks = [
-            ("assets.py", SLING_ASSETS_PATH,
-             lambda s: patch_sling_assets(s, program, generated), _compile_check),
-            ("definitions.py", SLING_DEFINITIONS_PATH,
-             lambda s: patch_definitions_py(s, program, generated), _compile_check),
-        ]
+        program_file = generated.get("program_file", "")
+        if program_file:
+            conflict = check_program_file_conflict(program, repo_root)
+            if conflict:
+                return {"program_file": {"ok": False, "error": conflict}}
+            try:
+                compile(program_file, f"programs/{program}.py", "exec")
+                results["program_file"] = {"ok": True, "lines": program_file.count("\n")}
+            except SyntaxError as e:
+                results["program_file"] = {"ok": False, "error": str(e)}
+        checks = []
 
     checks.append(
         ("sources.yml", SOURCES_YML_PATH, lambda s: patch_sources_yml(s, generated), _yaml_check)
@@ -1417,7 +1429,6 @@ def validate_locally(repo_root: Path | None, program: str, generated: dict) -> d
              lambda s: patch_dau_sql(s, program, generated), _dau_check)
         )
 
-    results = {}
     for label, relpath, patch, check in checks:
         path = repo_root / relpath
         if not path.exists():
