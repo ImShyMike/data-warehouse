@@ -718,6 +718,12 @@ wrangler_assets = create_airtable_sync_assets(
     description="Loads wrangler data into the warehouse.airtable_wrangler schema."
 )
 
+genesis_assets = create_airtable_sync_assets(
+    base_name="genesis",
+    tables=["projects_in_progress"],
+    description="Loads genesis data into the warehouse.airtable_genesis schema."
+)
+
 # --- DLT Asset: Loads Data into Warehouse using DLT ---
 @asset(
     compute_kind="dlt", # Tagging the compute type for UI clarity

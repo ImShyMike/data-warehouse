@@ -383,7 +383,7 @@ def validate_code():
     upstream = [
         gpc.SLING_ASSETS_PATH, gpc.SLING_DEFINITIONS_PATH,
         gpc.AIRTABLE_DEFINITIONS_PATH, gpc.DLT_ASSETS_PATH,
-        gpc.GENERATED_IDS_PATH, gpc.SOURCES_YML_PATH, gpc.DAU_MODEL_PATH,
+        gpc.GENERATED_IDS_PATH, gpc.SOURCES_DIR, gpc.DAU_MODEL_PATH,
     ]
     missing = [p for p in upstream if not (repo_root / p).exists()]
     if missing:

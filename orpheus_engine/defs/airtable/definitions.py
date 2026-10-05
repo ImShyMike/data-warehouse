@@ -445,6 +445,14 @@ airtable_config = AirtableServiceConfig(
                 ),
             }
         ),
+        "genesis": AirtableBaseConfig(
+            base_id="app9KtZZHkh5qWwgF",
+            tables={
+                "projects_in_progress": AirtableTableConfig(
+                    table_id="tblh5CPIlFJdCOHRY"
+                ),
+            }
+        ),
     }
 )
 

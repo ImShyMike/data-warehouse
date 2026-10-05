@@ -1,0 +1,9 @@
+version: 2
+
+sources:
+  - name: airtable_genesis
+    schema: airtable_genesis
+    tables:
+      - name: projects_in_progress
+        description: "Genesis projects_in_progress table."
+        meta: {dagster: {deps: [genesis_projects_in_progress_warehouse]}}

@@ -259,6 +259,9 @@ WITH program_windows AS (
                    TIMESTAMP WITH TIME ZONE '2026-10-12 00:00:00 America/New_York'),
         ('terra', TIMESTAMP WITH TIME ZONE '2026-09-21 00:00:00 America/New_York',
                    TIMESTAMP WITH TIME ZONE '2027-01-11 00:00:00 America/New_York')
+        ('genesis', TIMESTAMP WITH TIME ZONE '2026-09-23 00:00:00+00',
+                   NULL::timestamptz)
+    
     ) AS t(program_name, start_at, end_at_exclusive)
 ),
 
@@ -913,7 +916,7 @@ stardance_ht_claims AS (
         hp.created_at AT TIME ZONE 'UTC' AS claim_start_ts
     FROM {{ source('stardance', 'user_hackatime_projects') }} hp
     JOIN {{ source('stardance', 'users') }} u ON u.id = hp.user_id
-    LEFT JOIN {{ source('stardance', 'projects') }} proj ON proj.id = hp.project_id
+    JOIN {{ source('stardance', 'projects') }} proj ON proj.id = hp.project_id
     WHERE hp.name IS NOT NULL AND hp.name <> ''
 ),
 
@@ -930,7 +933,7 @@ flavortown_ht_claims AS (
         hp.created_at AT TIME ZONE 'UTC' AS claim_start_ts
     FROM {{ source('flavortown', 'user_hackatime_projects') }} hp
     JOIN {{ source('flavortown', 'users') }} u ON u.id = hp.user_id
-    LEFT JOIN {{ source('flavortown', 'projects') }} proj ON proj.id = hp.project_id
+    JOIN {{ source('flavortown', 'projects') }} proj ON proj.id = hp.project_id
     WHERE hp.name IS NOT NULL AND hp.name <> ''
 ),
 
@@ -1717,11 +1720,6 @@ wrangler_ht_claims AS (
                   || '@' || SPLIT_PART(LOWER(BTRIM(hp."email")), '@', 2)
              ELSE SPLIT_PART(LOWER(BTRIM(hp."email")), '+', 1)
         END AS user_email,
-        LOWER(BTRIM(hp."linked_lapse_lookout_hackatime_links")) AS hackatime_alias,
-        NULL::text AS project_name,
-        NULL::text AS code_url,
-        TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00' AS claim_start_ts
-    FROM {{ source('airtable_wrangler', 'ysws_project_submission') }} hp
         LOWER(REPLACE(BTRIM(SPLIT_PART(url, '/project/', 2)), '+', ' ')) AS hackatime_alias,
         NULL::text AS project_name,
         NULL::text AS code_url,
@@ -1759,6 +1757,24 @@ terra_ht_claims AS (
       AND alias.alias_text IS NOT NULL AND BTRIM(alias.alias_text) <> ''
 ),
 
+genesis_ht_claims AS (
+    SELECT 'genesis'::text AS program_name,
+        CASE WHEN POSITION('@' IN LOWER(BTRIM(m.hackatime_first_email))) > 0
+             THEN SPLIT_PART(SPLIT_PART(LOWER(BTRIM(m.hackatime_first_email)), '@', 1), '+', 1)
+                  || '@' || SPLIT_PART(LOWER(BTRIM(m.hackatime_first_email)), '@', 2)
+             ELSE SPLIT_PART(LOWER(BTRIM(m.hackatime_first_email)), '+', 1)
+        END AS user_email,
+        LOWER(BTRIM(hp."project_name")) AS hackatime_alias,
+        NULL::text AS project_name,
+        NULL::text AS code_url,
+        hp."created" AT TIME ZONE 'UTC' AS claim_start_ts
+    FROM {{ source('airtable_genesis', 'projects_in_progress') }} hp
+    JOIN {{ source('hackatime_raw', 'users') }} hu
+        ON LOWER(hu.username) = LOWER(BTRIM(hp."author"))
+    JOIN beest_htid_email m ON m.hackatime_user_id = hu.id
+    WHERE hp."project_name" IS NOT NULL AND hp."project_name" <> ''
+),
+
 all_claims_raw AS (
     SELECT * FROM stardance_ht_claims
     UNION ALL SELECT * FROM flavortown_ht_claims
@@ -1785,6 +1801,7 @@ all_claims_raw AS (
     UNION ALL SELECT * FROM wrangler_ht_claims
     UNION ALL SELECT * FROM playground_ht_claims
     UNION ALL SELECT * FROM terra_ht_claims
+    UNION ALL SELECT * FROM genesis_ht_claims
 ),
 
 all_claims AS (
