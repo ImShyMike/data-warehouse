@@ -1715,11 +1715,6 @@ wrangler_ht_claims AS (
                   || '@' || SPLIT_PART(LOWER(BTRIM(hp."email")), '@', 2)
              ELSE SPLIT_PART(LOWER(BTRIM(hp."email")), '+', 1)
         END AS user_email,
-        LOWER(BTRIM(hp."linked_lapse_lookout_hackatime_links")) AS hackatime_alias,
-        NULL::text AS project_name,
-        NULL::text AS code_url,
-        TIMESTAMP WITH TIME ZONE '2026-08-10 00:00:00+00' AS claim_start_ts
-    FROM {{ source('airtable_wrangler', 'ysws_project_submission') }} hp
         LOWER(REPLACE(BTRIM(SPLIT_PART(url, '/project/', 2)), '+', ' ')) AS hackatime_alias,
         NULL::text AS project_name,
         NULL::text AS code_url,
