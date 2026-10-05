@@ -3340,4 +3340,23 @@ class AirtableIDs:
             value = "fld0p2vciXHyUrYQF"  # Name: Value
 
 
+    class genesis:
+        """IDs for Base 'genesis' (ID: app9KtZZHkh5qWwgF)"""
+        BASE_ID = "app9KtZZHkh5qWwgF"
+
+        class projects_in_progress:
+            """IDs for Table 'projects_in_progress' (ID: tblh5CPIlFJdCOHRY)"""
+            TABLE_ID = "tblh5CPIlFJdCOHRY"
+
+            project_name = "fldi07kdB9JzL6xJH"  # Name: Project Name
+            author = "fldWEZnBvezedz6OF"  # Name: Author
+            repository = "fldfSJIGlIWtRdMOL"  # Name: Repository
+            raw_total_time = "fldfQNU8QXkdUALfq"  # Name: Raw Total Time
+            raw_hours = "fldnJanEZ9rNdf85C"  # Name: Raw Hours
+            raw_wp = "fldgLNjZEwR1a0So0"  # Name: Raw WP
+            last_heartbeat = "fldOWiMtR8qTYc3Os"  # Name: Last Heartbeat
+            status = "fldlDLCkKTVOutZYR"  # Name: Status
+            created = "fldK64yfLlbZ8j3Cr"  # Name: Created
+
+
 # fmt: on
