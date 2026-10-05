@@ -103,17 +103,12 @@ class _GithubPrBase:
 
     def _check_conflicts(self):
         source_file = _sources_file_path(self.generated)
-        try:
-            self._require_file(source_file)
+        if self._fetch_file(source_file) is not None:
             source_name = _dbt_source_name(self.generated)
             raise ConflictError(
                 f"{source_file} already exists — dbt source {source_name!r} "
                 f"is already declared. Pick a different program name."
             )
-        except Exception as e:
-            if isinstance(e, ConflictError):
-                raise
-            pass  # file doesn't exist, no conflict
 
         if not wants_dau(self.generated):
             return

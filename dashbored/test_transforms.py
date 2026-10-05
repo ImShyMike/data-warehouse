@@ -329,6 +329,10 @@ def airtable_pr_creator(program, generated):
     """An AirtablePrCreator that reads the parent repo off disk instead of GitHub."""
     creator = AirtablePrCreator("", program, generated, {"github_username": "nobody"})
     creator._require_file = lambda path, repo=None: repo_file(path)
+    def _local_fetch(path, repo=None):
+        p = REPO_ROOT / path
+        return p.read_text() if p.exists() else None
+    creator._fetch_file = _local_fetch
     return creator
 
 
