@@ -258,7 +258,7 @@ WITH program_windows AS (
         ('playground', TIMESTAMP WITH TIME ZONE '2026-09-25 00:00:00 America/New_York',
                    TIMESTAMP WITH TIME ZONE '2026-10-12 00:00:00 America/New_York'),
         ('terra', TIMESTAMP WITH TIME ZONE '2026-09-21 00:00:00 America/New_York',
-                   TIMESTAMP WITH TIME ZONE '2027-01-11 00:00:00 America/New_York')
+                   TIMESTAMP WITH TIME ZONE '2027-01-11 00:00:00 America/New_York'),
         ('genesis', TIMESTAMP WITH TIME ZONE '2026-09-23 00:00:00+00',
                    NULL::timestamptz),
         ('fabricate', TIMESTAMP WITH TIME ZONE '2026-09-30 00:00:00+00',
@@ -1750,7 +1750,7 @@ terra_ht_claims AS (
     FROM {{ source('terra', 'ysws_projects') }} p
     JOIN {{ source('terra', 'users') }} u ON u.id = p.user_id
     JOIN {{ source('terra', 'hackatime_accounts') }} ha ON ha.user_id = p.user_id
-    JOIN beest_htid_email m ON m.hackatime_user_id::text = ha.hackatime_user_id
+    JOIN ht_user_email m ON m.hackatime_user_id::text = ha.hackatime_user_id
     CROSS JOIN LATERAL UNNEST(STRING_TO_ARRAY(p.hackatime_project_name, ',')) AS alias(alias_text)
     WHERE p.deleted_at IS NULL
       AND u.deleted_at IS NULL
