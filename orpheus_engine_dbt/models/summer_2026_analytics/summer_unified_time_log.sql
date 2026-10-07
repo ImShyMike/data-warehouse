@@ -1741,7 +1741,7 @@ genesis_ht_claims AS (
     FROM {{ source('airtable_genesis', 'projects_in_progress') }} hp
     JOIN {{ source('hackatime_raw', 'users') }} hu
         ON LOWER(hu.username) = LOWER(BTRIM(hp."author"))
-    JOIN beest_htid_email m ON m.hackatime_user_id = hu.id
+    JOIN ht_user_email m ON m.hackatime_user_id = hu.id
     WHERE hp."project_name" IS NOT NULL AND hp."project_name" <> ''
 ),
 
