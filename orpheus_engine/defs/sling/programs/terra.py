@@ -1,6 +1,6 @@
 import dagster as dg
 from dagster_sling import SlingConnectionResource, SlingResource
-from dagster import EnvVar, Nothing
+from dagster import Nothing
 from .._helpers import _sling_connection_url
 
 
@@ -21,21 +21,23 @@ terra_replication_config = {
     },
 
     "streams": {
-        "public.users": {
-            "select": ["id", "deleted_at"],
-        },
+        "public.*": None,
+
+        # --- Disabled: entirely encrypted PII ---
+        "public.user_addresses": {"disabled": True},
+
+        # --- Sensitive: exclude credential columns ---
         "public.hackatime_accounts": {
-            "select": ["id", "user_id", "hackatime_user_id"],
+            "select": ["-access_token_enc", "-api_key_enc"],
         },
-        "public.ysws_projects": {
-            "select": [
-                "id", "user_id", "title", "code_url", "hackatime_project_name",
-                "week_number", "created_at", "deleted_at",
-            ],
+        "public.chat_slack_accounts": {
+            "select": ["-access_token_enc"],
+        },
+        "public.github_accounts": {
+            "select": ["-access_token_enc"],
         },
     },
 }
-
 
 
 @dg.asset(
@@ -47,7 +49,7 @@ def terra_warehouse_mirror(
     context: dg.AssetExecutionContext,
     sling: SlingResource,
 ) -> Nothing:
-    """Replicates the Terra DB tables used for DAU → warehouse in a single shot."""
+    """Replicates the Terra DB → warehouse in a single shot."""
     context.log.info("Starting Terra → warehouse Sling replication")
 
     for _ in sling.replicate(
